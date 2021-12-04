@@ -183,9 +183,5 @@ void Sprite_draw(struct Sprite *s) {
 }
 
 void Sprite_advance(struct Sprite *s) {
-  if (s->current + 1 < s->num_frames) {
-    s->current++;
-  } else {
-    s->current = 0;
-  }
+  s->current = (s->current + 1) % s->num_frames;
 }
