@@ -6,32 +6,61 @@
  */
 #include <Rainbowduino.h>
 
-#define ANIMATION_SPEED   128
+#define ANIMATION_SPEED   181
 #define MAX_FRAMES        5
 #define MAX_X             8
 #define MAX_Y             8
 #define NUM_SPRITES       2
 #define PALETTE_SIZE      8
 #define MAX_ALTITUDE      16
-#define NUM_SPARKS        16
+#define NUM_PARTICLES     8
 
 struct Pixel {
-  int r,g,b;
+  int r, g, b;
 };
 
-struct Spark {
-  int x, y, color;
+typedef struct Pixel Palette[4];
+
+struct Particle {
+  int x, y, palette, color;
 };
+
+struct Row {
+  unsigned char mask, color, shift;
+};
+
+typedef struct Row Frame[MAX_Y];
 
 struct Sprite {
-  size_t  num_frames;
-  size_t  current;
-  char    frames[MAX_FRAMES][MAX_X][MAX_Y];
+  size_t   num_frames, current;
+  int      palette;
+  Frame    frames[MAX_FRAMES];
 };
 
-Spark    sparks[NUM_SPARKS];
+Particle particles[NUM_PARTICLES];
 Sprite   sprites[NUM_SPRITES];
 Pixel    buffer[MAX_X][MAX_Y];
+
+const Palette palettes[3] = {
+  {
+    {200,50,0},
+    {200,110,0},
+    {0,0,0},
+    {254,202,0}
+  },
+  {
+    {0,0,0},
+    {10,0,0},
+    {20,0,0},
+    {30,10,0}
+  },
+  {
+    {2,1,0},
+    {0,0,0},
+    {0,0,0},
+    {0,0,0}
+  }
+};
 
 const Pixel palette[PALETTE_SIZE] = {
   {0,0,0},       /* Black */
@@ -49,68 +78,66 @@ void setup() {
   /* Initialize Rainbowduino driver */
   Rb.init();
 
-  /* Initialize an array of Sparks */
-  for(int s=0; s<NUM_SPARKS ;s++) {
-    Spark_init(&sparks[s]);
+  /* Sparks */
+  for(int p=0; p<NUM_PARTICLES ;p++) {
+    Particle_init(&particles[p], 1);
   }
 
   /* Flames */
-  sprites[0] = { .num_frames = 4, .current = 0, .frames = {
-    {
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,3,0,0,0,0},
-      {0,0,3,4,3,0,3,0},
-      {0,3,3,4,4,3,3,0},
-      {3,0,0,0,0,0,4,0},
-      {0,0,0,0,0,0,0,0}
-    },
-    {
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,3,0,0,0},
-      {0,0,0,3,4,3,3,0},
-      {0,3,3,4,4,3,3,0},
-      {3,0,0,0,0,0,4,0},
-      {0,0,0,0,0,0,0,0}
-    },
-    {
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,3,0,0},
-      {0,0,0,3,3,3,3,0},
-      {0,3,3,4,4,4,3,0},
-      {3,0,0,0,0,0,4,0},
-      {0,0,0,0,0,0,0,0}
-    },
-    {
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,3,0,0,0},
-      {0,0,0,3,4,3,3,0},
-      {0,3,3,4,4,3,3,0},
-      {3,0,0,0,0,0,4,0},
-      {0,0,0,0,0,0,0,0}
-    }
-  }};
+  sprites[0] = {
+    .num_frames = 3,
+    .current = 0,
+    .palette = 0,
+    .frames = {
+      {
+        {0x00, 0x00, 0x00},
+        {0x10, 0x00, 0x00},
+        {0x3A, 0x00, 0x00},
+        {0x1E, 0x01, 0x00},
+        {0x3F, 0x1E, 0x0C},
+        {0x7F, 0x3E, 0x1E},
+        {0xFF, 0x7E, 0x3C},
+        {0xFF, 0x7E, 0x3C}
+      },
+      {
+        {0x00, 0x00, 0x00},
+        {0x10, 0x00, 0x00},
+        {0x1C, 0x00, 0x00},
+        {0x3A, 0x18, 0x10},
+        {0x7E, 0x38, 0x10},
+        {0xFE, 0x3C, 0x18},
+        {0xFF, 0x7E, 0x3C},
+        {0xFF, 0x7E, 0x3C}
+      },
+      {
+        {0x00, 0x00, 0x00},
+        {0x20, 0x00, 0x00},
+        {0x30, 0x20, 0x00},
+        {0x78, 0x30, 0x00},
+        {0x7C, 0x31, 0x20},
+        {0xFE, 0x7C, 0x30},
+        {0xFF, 0x7E, 0x3C},
+        {0xFF, 0x7E, 0x3C}
+      }
+    }};
 
   /* Log */
-  sprites[1] = { .num_frames = 1, .current = 0, .frames = {
-    {
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,0,0,0,0,0,0},
-      {0,0,5,5,0,6,0,0},
-      {0,6,5,6,5,5,5,5}
-    }
-  }};
+  sprites[1] = {
+    .num_frames = 1,
+    .current = 0,
+    .palette = 2,
+    .frames = {
+      {
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x3C, 0x00, 0x00},
+        {0x3C, 0x00, 0x00}
+      }
+    }};
 
 }
 
@@ -119,7 +146,7 @@ void loop() {
   /* Clear buffer */
   for (int x = 0; x < MAX_X; x++) {
     for (int y = 0; y < MAX_Y; y++) {
-      buffer[x][y] = palette[0];
+      buffer[x][y] = {0,0,0};
     }
   }
 
@@ -128,9 +155,9 @@ void loop() {
     Sprite_draw(&sprites[s]);
   }
 
-  /* Draw Sparks on to buffer */
-  for(int s=0; s<NUM_SPARKS ;s++) {
-    Spark_draw(&sparks[s]);
+  /* Draw particles on to buffer */
+  for(int p=0; p<NUM_PARTICLES ;p++) {
+    Particle_draw(&particles[p]);
   }
 
   /* Copy buffer to Rainbowduino */
@@ -145,41 +172,59 @@ void loop() {
     Sprite_advance(&sprites[s]);
   }
 
-  /* Advance sparks */
-  for(int s=0; s<NUM_SPARKS ;s++) {
-    Spark_advance(&sparks[s]);
+  /* Advance particles */
+  for(int p=0; p<NUM_PARTICLES ;p++) {
+    Particle_advance(&particles[p]);
   }
 
   delay(ANIMATION_SPEED);
 }
 
-void Spark_init(struct Spark *s) {
-  s->x       = rand() % (MAX_X);
-  s->y       = rand() % (MAX_ALTITUDE);
-  s->color   = rand() % (4) + 0;
+void Particle_init(struct Particle *p, int palette) {
+  p->x       = rand() % (MAX_X);
+  p->y       = rand() % (MAX_ALTITUDE);
+  p->color   = rand() % (4) + 0;
+  p->palette = palette;
 }
 
-void Spark_draw(struct Spark *s) {
-  if (s->y < MAX_Y)
-    buffer[s->x][s->y] = palette[s->color];
+void Particle_draw(struct Particle *p) {
+  if (p->y < MAX_Y)
+    buffer[p->x][p->y] = palettes[p->palette][p->color];
 }
 
-void Spark_advance(struct Spark *s) {
-  if (s->y < MAX_ALTITUDE) {
-    s->y++;
+void Particle_advance(struct Particle *p) {
+  if (p->y < MAX_ALTITUDE) {
+    p->y++;
   } else {
-    Spark_init(s);
+    Particle_init(p, p->palette);
   }
 }
 
 void Sprite_draw(struct Sprite *s) {
+
+  int offset, color, shift = 0;
+
   for (int x = 0; x < MAX_X; x++) {
     for (int y = 0; y < MAX_Y; y++) {
-      /* Rotate Sprite 90 degrees */
-      if (s->frames[s->current][x][y] != 0 )
-        buffer[y][abs(x-7)] = palette[(int) s->frames[s->current][x][y]];
+
+      offset = abs(x - (MAX_X - 1));
+
+      if (s->frames[s->current][y].mask & (1 << offset)) {
+
+        color = ((s->frames[s->current][y].color >> offset) & 1);
+
+        if (x > 6) {
+          shift = ((s->frames[s->current][y].shift << (offset + 1)) & 2);
+        } else {
+          shift = ((s->frames[s->current][y].shift >> (offset - 1)) & 2);
+        }
+
+        buffer[x][abs(y-7)] = palettes[s->palette][color | shift];
+      }
+
     }
   }
+
 }
 
 void Sprite_advance(struct Sprite *s) {
