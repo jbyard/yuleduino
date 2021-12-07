@@ -10,10 +10,9 @@
 #define MAX_FRAMES        5
 #define MAX_X             8
 #define MAX_Y             8
-#define NUM_SPRITES       2
-#define PALETTE_SIZE      8
+#define MAX_SPRITES       2
 #define MAX_ALTITUDE      16
-#define NUM_PARTICLES     8
+#define MAX_PARTICLES     8
 
 struct Pixel {
   int r, g, b;
@@ -37,8 +36,10 @@ struct Sprite {
   Frame    frames[MAX_FRAMES];
 };
 
-Particle particles[NUM_PARTICLES];
-Sprite   sprites[NUM_SPRITES];
+size_t num_sprites, num_particles;
+
+Particle particles[MAX_PARTICLES];
+Sprite   sprites[MAX_SPRITES];
 Pixel    buffer[MAX_X][MAX_Y];
 
 const Palette palettes[3] = {
@@ -47,30 +48,17 @@ const Palette palettes[3] = {
     {200,110,0},
     {0,0,0},
     {254,202,0}
-  },
-  {
+  },{
     {0,0,0},
     {10,0,0},
     {20,0,0},
     {30,10,0}
-  },
-  {
-    {2,1,0},
-    {0,0,0},
-    {0,0,0},
+  },{
+    {8,1,0},
+    {8,2,0},
+    {8,3,0},
     {0,0,0}
   }
-};
-
-const Pixel palette[PALETTE_SIZE] = {
-  {0,0,0},       /* Black */
-  {5,0,0},       /* Crimson */
-  {139,0,0},     /* Red */
-  {254,50,0},    /* Orange */
-  {254,202,0},   /* Yellow */
-  {2,1,0},       /* Brown */
-  {10,10,0},     /* Tan */
-  {0,0,0}
 };
 
 void setup() {
@@ -78,12 +66,8 @@ void setup() {
   /* Initialize Rainbowduino driver */
   Rb.init();
 
-  /* Sparks */
-  for(int p=0; p<NUM_PARTICLES ;p++) {
-    Particle_init(&particles[p], 1);
-  }
-
-  /* Flames */
+  /* A Roaring Fire */
+  num_sprites = 2;
   sprites[0] = {
     .num_frames = 3,
     .current = 0,
@@ -97,7 +81,7 @@ void setup() {
         {0x3F, 0x1E, 0x0C},
         {0x7F, 0x3E, 0x1E},
         {0xFF, 0x7E, 0x3C},
-        {0xFF, 0x7E, 0x3C}
+        {0x7E, 0x7E, 0x3C}
       },
       {
         {0x00, 0x00, 0x00},
@@ -107,7 +91,7 @@ void setup() {
         {0x7E, 0x38, 0x10},
         {0xFE, 0x3C, 0x18},
         {0xFF, 0x7E, 0x3C},
-        {0xFF, 0x7E, 0x3C}
+        {0x7E, 0x7E, 0x3C}
       },
       {
         {0x00, 0x00, 0x00},
@@ -117,13 +101,13 @@ void setup() {
         {0x7C, 0x31, 0x20},
         {0xFE, 0x7C, 0x30},
         {0xFF, 0x7E, 0x3C},
-        {0xFF, 0x7E, 0x3C}
+        {0x7E, 0x7E, 0x3C}
       }
     }};
 
-  /* Log */
+  /* A Crackling Log */
   sprites[1] = {
-    .num_frames = 1,
+    .num_frames = 4,
     .current = 0,
     .palette = 2,
     .frames = {
@@ -134,11 +118,47 @@ void setup() {
         {0x00, 0x00, 0x00},
         {0x00, 0x00, 0x00},
         {0x00, 0x00, 0x00},
-        {0x3C, 0x00, 0x00},
-        {0x3C, 0x00, 0x00}
+        {0x7E, 0x00, 0x00},
+        {0x7E, 0x00, 0x00}
+      },
+      {
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x7E, 0xFF, 0x00},
+        {0x7E, 0x00, 0x00}
+      },
+      {
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x7E, 0x00, 0xFF},
+        {0x7E, 0x00, 0x00}
+      },
+      {
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x00, 0x00, 0x00},
+        {0x7E, 0xFF, 0x00},
+        {0x7E, 0x00, 0x00}
       }
     }};
 
+  /* Some Shooting Sparks */
+  num_particles = 8;
+
+  for(int p = 0; p < num_particles; p++) {
+    Particle_init(&particles[p], 1);
+  }
 }
 
 void loop() {
@@ -151,12 +171,12 @@ void loop() {
   }
 
   /* Draw sprites on to buffer */
-  for(int s=0; s<NUM_SPRITES ;s++) {
+  for(int s = 0; s < num_sprites; s++) {
     Sprite_draw(&sprites[s]);
   }
 
   /* Draw particles on to buffer */
-  for(int p=0; p<NUM_PARTICLES ;p++) {
+  for(int p = 0; p < num_particles; p++) {
     Particle_draw(&particles[p]);
   }
 
@@ -168,12 +188,12 @@ void loop() {
   }
 
   /* Advance sprites */
-  for(int s=0; s<NUM_SPRITES ;s++) {
+  for(int s = 0; s < num_sprites; s++) {
     Sprite_advance(&sprites[s]);
   }
 
   /* Advance particles */
-  for(int p=0; p<NUM_PARTICLES ;p++) {
+  for(int p = 0; p < num_particles; p++) {
     Particle_advance(&particles[p]);
   }
 
@@ -182,7 +202,7 @@ void loop() {
 
 void Particle_init(struct Particle *p, int palette) {
   p->x       = rand() % (MAX_X);
-  p->y       = rand() % (MAX_ALTITUDE);
+  p->y       = rand() % (MAX_ALTITUDE) + 2;
   p->color   = rand() % (4) + 0;
   p->palette = palette;
 }
@@ -211,20 +231,21 @@ void Sprite_draw(struct Sprite *s) {
 
       if (s->frames[s->current][y].mask & (1 << offset)) {
 
+        /* This position's color bit becomes the first color selection bit */
         color = ((s->frames[s->current][y].color >> offset) & 1);
 
+        /* This position's shift bit becomes the second color selection bit */
         if (x > 6) {
           shift = ((s->frames[s->current][y].shift << (offset + 1)) & 2);
         } else {
           shift = ((s->frames[s->current][y].shift >> (offset - 1)) & 2);
         }
 
+        /* Color this position in the buffer */
         buffer[x][abs(y-7)] = palettes[s->palette][color | shift];
       }
-
     }
   }
-
 }
 
 void Sprite_advance(struct Sprite *s) {
