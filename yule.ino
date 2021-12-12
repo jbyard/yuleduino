@@ -1,5 +1,5 @@
 /*
- * yuleduino.ino
+ * yule.ino
  *
  * A Rainbowduino Yule Log.  Brown is a difficult color.  Merry Christmas!
  *
@@ -25,7 +25,7 @@ struct Particle {
 };
 
 struct Row {
-  unsigned char mask, color, shift;
+  unsigned char mask, low_color_bit, high_color_bit;
 };
 
 typedef struct Row Frame[MAX_Y];
@@ -222,27 +222,20 @@ void Particle_advance(struct Particle *p) {
 
 void Sprite_draw(struct Sprite *s) {
 
-  int offset, color, shift = 0;
+  int position = 0;
 
-  for (int x = 0; x < MAX_X; x++) {
-    for (int y = 0; y < MAX_Y; y++) {
+  for (int y = 0, z = (MAX_Y - 1); y < MAX_Y; y++, z--) {
+    for (int x = 0; x < MAX_X; x++) {
 
-      offset = abs(x - (MAX_X - 1));
+      position = (1 << (MAX_X - 1)) >> x;
 
-      if (s->frames[s->current][y].mask & (1 << offset)) {
+      if (s->frames[s->current][y].mask & position) {
 
-        /* This position's color bit becomes the first color selection bit */
-        color = ((s->frames[s->current][y].color >> offset) & 1);
-
-        /* This position's shift bit becomes the second color selection bit */
-        if (x > 6) {
-          shift = ((s->frames[s->current][y].shift << (offset + 1)) & 2);
-        } else {
-          shift = ((s->frames[s->current][y].shift >> (offset - 1)) & 2);
-        }
-
-        /* Color this position in the buffer */
-        buffer[x][abs(y-7)] = palettes[s->palette][color | shift];
+        /* If the Sprite masks this position, then color it in the buffer. */
+        buffer[x][z] = palettes[s->palette][
+          !!(s->frames[s->current][y].high_color_bit & position) << 1
+          | !!(s->frames[s->current][y].low_color_bit & position)
+        ];
       }
     }
   }
